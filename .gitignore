@@ -1,0 +1,20 @@
+# Build output
+target/
+
+# Local application data
+data/appointments.mv.db
+data/appointments.trace.db
+
+# IDE settings
+.idea/
+
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+secrets.*
+credentials/
+credentials.*
