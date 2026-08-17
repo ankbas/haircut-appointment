@@ -1,60 +1,71 @@
 # Haircut Appointment API
 
-A simple Spring Boot REST API for scheduling haircut appointments. It stores appointments in a local H2 database and prevents two customers from booking the same date and time.
+A Spring Boot REST API for creating and managing haircut appointments. Appointments are stored in a local H2 database, and duplicate date/time bookings are rejected.
 
-## What you need
+## Requirements
 
-- Java 17 or newer
-- No separate database setup is required
+- Java 17+
+- No external database required
 
-## Run the application
-
-On Windows:
+## Run locally
 
 ```powershell
+# Windows
 .\mvnw.cmd spring-boot:run
 ```
 
-On macOS or Linux:
-
 ```bash
+# macOS/Linux
 ./mvnw spring-boot:run
 ```
 
-The API will be available at `http://localhost:8080/api/appointments`.
+Base URL: `http://localhost:8080/api/appointments`
 
-## API endpoints
+## API
 
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `POST` | `/api/appointments` | Create an appointment |
-| `GET` | `/api/appointments` | List all appointments |
-| `GET` | `/api/appointments/{id}` | Get one appointment |
-| `PUT` | `/api/appointments/{id}` | Update an appointment |
-| `DELETE` | `/api/appointments/{id}` | Delete an appointment |
+| Method | Endpoint | Success | Description |
+| --- | --- | --- | --- |
+| `POST` | `/api/appointments` | `201 Created` | Create an appointment |
+| `GET` | `/api/appointments` | `200 OK` | List appointments by date and time |
+| `GET` | `/api/appointments/{id}` | `200 OK` | Get an appointment |
+| `PUT` | `/api/appointments/{id}` | `200 OK` | Replace an appointment |
+| `DELETE` | `/api/appointments/{id}` | `204 No Content` | Delete an appointment |
 
-## Example request
+### Request body
 
-Create an appointment:
+Used by `POST` and `PUT`:
 
-```powershell
-Invoke-RestMethod -Method Post `
-  -Uri http://localhost:8080/api/appointments `
-  -ContentType "application/json" `
-  -Body '{
-    "name": "Alex Johnson",
-    "phoneNumber": "555-123-4567",
-    "appointmentDate": "2026-08-20",
-    "appointmentTime": "14:30"
-  }'
+```json
+{
+  "name": "Alex Johnson",
+  "phoneNumber": "555-123-4567",
+  "appointmentDate": "2099-08-20",
+  "appointmentTime": "14:30"
+}
 ```
 
-The appointment date must be today or later. Names, phone numbers, dates, and times are required.
+All fields are required. The date must be today or later, and the phone number must contain 7–25 valid phone characters. Unknown fields are rejected.
 
-## Run the tests
+### Error responses
+
+Errors use the standard `ProblemDetail` JSON format:
+
+| Status | Meaning |
+| --- | --- |
+| `400 Bad Request` | Invalid request data |
+| `404 Not Found` | Appointment ID does not exist |
+| `409 Conflict` | Date and time are already booked |
+
+Validation responses also include an `errors` object containing messages for each invalid field.
+
+## Project structure
+
+The appointment feature is organized into `controller`, `service`, `repository`, `entity`, `dto`, and `exception` packages.
+
+## Tests
 
 ```powershell
 .\mvnw.cmd test
 ```
 
-The local database is created in the `data` folder. Build output, database files, IDE settings, and local secrets are excluded from Git.
+The application uses a file-based H2 database at `./data/appointments`. Tests use a separate in-memory database.
