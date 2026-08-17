@@ -37,19 +37,19 @@ public class AppointmentController {
     }
 
     @GetMapping
-    public List<AppointmentResponseDto> findAll() {
-        return service.findAll();
+    public ResponseEntity<List<AppointmentResponseDto>> findAll() {
+        return ResponseEntity.ok(service.findAll());
     }
 
     @GetMapping("/{id}")
-    public AppointmentResponseDto findById(@PathVariable Long id) {
-        return service.findById(id);
+    public ResponseEntity<AppointmentResponseDto> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(service.findById(id));
     }
 
     @PutMapping("/{id}")
-    public AppointmentResponseDto update(
+    public ResponseEntity<AppointmentResponseDto> update(
             @PathVariable Long id, @Valid @RequestBody AppointmentRequestDto request) {
-        return service.update(id, request);
+        return ResponseEntity.ok(service.update(id, request));
     }
 
     @DeleteMapping("/{id}")

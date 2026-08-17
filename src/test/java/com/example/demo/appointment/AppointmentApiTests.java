@@ -10,7 +10,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -40,11 +43,17 @@ class AppointmentApiTests {
 
     @Test
     void createsAndRetrievesAnAppointment() throws Exception {
-        mockMvc.perform(post("/api/appointments")
+        String location = mockMvc.perform(post("/api/appointments")
                 .contentType(MediaType.APPLICATION_JSON)
                         .content(APPOINTMENT))
                 .andExpect(status().isCreated())
+                .andExpect(header().exists("Location"))
                 .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.name").value("John Smith"))
+                .andReturn().getResponse().getHeader("Location");
+
+        mockMvc.perform(get(location))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("John Smith"));
 
         mockMvc.perform(get("/api/appointments"))
@@ -52,6 +61,28 @@ class AppointmentApiTests {
                 .andExpect(jsonPath("$[0].phoneNumber").value("312-555-1234"))
                 .andExpect(jsonPath("$[0].appointmentDate").value("2099-08-20"))
                 .andExpect(jsonPath("$[0].appointmentTime").value("14:30:00"));
+    }
+
+    @Test
+    void updatesAndDeletesAnAppointment() throws Exception {
+        String location = mockMvc.perform(post("/api/appointments")
+                        .contentType(MediaType.APPLICATION_JSON).content(APPOINTMENT))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getHeader("Location");
+
+        mockMvc.perform(put(location)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(APPOINTMENT.replace("John Smith", "Jane Smith")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Jane Smith"));
+
+        mockMvc.perform(delete(location))
+                .andExpect(status().isNoContent())
+                .andExpect(jsonPath("$").doesNotExist());
+
+        mockMvc.perform(get(location))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.title").value("Appointment not found"));
     }
 
     @Test
