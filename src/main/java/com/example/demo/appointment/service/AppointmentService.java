@@ -1,7 +1,11 @@
-package com.example.demo.appointment;
+package com.example.demo.appointment.service;
 
 import com.example.demo.appointment.dto.AppointmentRequestDto;
 import com.example.demo.appointment.dto.AppointmentResponseDto;
+import com.example.demo.appointment.entity.Appointment;
+import com.example.demo.appointment.exception.AppointmentConflictException;
+import com.example.demo.appointment.exception.AppointmentNotFoundException;
+import com.example.demo.appointment.repository.AppointmentRepository;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,5 +1,6 @@
 package com.example.demo.appointment;
 
+import com.example.demo.appointment.repository.AppointmentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,6 +1,6 @@
 package com.example.demo.appointment.dto;
 
-import com.example.demo.appointment.Appointment;
+import com.example.demo.appointment.entity.Appointment;
 
 import java.time.LocalDate;
 import java.time.LocalTime;

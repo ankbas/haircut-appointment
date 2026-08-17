@@ -1,4 +1,4 @@
-package com.example.demo.appointment;
+package com.example.demo.appointment.exception;
 
 public class AppointmentNotFoundException extends RuntimeException {
     public AppointmentNotFoundException(Long id) {
