@@ -1,5 +1,7 @@
 package com.example.demo.appointment;
 
+import com.example.demo.appointment.dto.AppointmentRequestDto;
+import com.example.demo.appointment.dto.AppointmentResponseDto;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,26 +28,26 @@ public class AppointmentController {
     }
 
     @PostMapping
-    public ResponseEntity<AppointmentResponse> create(@Valid @RequestBody AppointmentRequest request) {
-        AppointmentResponse created = service.create(request);
+    public ResponseEntity<AppointmentResponseDto> create(@Valid @RequestBody AppointmentRequestDto request) {
+        AppointmentResponseDto created = service.create(request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}").buildAndExpand(created.id()).toUri();
         return ResponseEntity.created(location).body(created);
     }
 
     @GetMapping
-    public List<AppointmentResponse> findAll() {
+    public List<AppointmentResponseDto> findAll() {
         return service.findAll();
     }
 
     @GetMapping("/{id}")
-    public AppointmentResponse findById(@PathVariable Long id) {
+    public AppointmentResponseDto findById(@PathVariable Long id) {
         return service.findById(id);
     }
 
     @PutMapping("/{id}")
-    public AppointmentResponse update(
-            @PathVariable Long id, @Valid @RequestBody AppointmentRequest request) {
+    public AppointmentResponseDto update(
+            @PathVariable Long id, @Valid @RequestBody AppointmentRequestDto request) {
         return service.update(id, request);
     }
 
