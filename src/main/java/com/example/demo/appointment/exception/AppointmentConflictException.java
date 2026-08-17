@@ -1,4 +1,4 @@
-package com.example.demo.appointment;
+package com.example.demo.appointment.exception;
 
 public class AppointmentConflictException extends RuntimeException {
     public AppointmentConflictException() {

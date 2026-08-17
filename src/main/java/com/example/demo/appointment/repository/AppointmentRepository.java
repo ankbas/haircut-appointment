@@ -1,5 +1,6 @@
-package com.example.demo.appointment;
+package com.example.demo.appointment.repository;
 
+import com.example.demo.appointment.entity.Appointment;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;

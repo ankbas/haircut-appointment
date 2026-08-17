@@ -1,4 +1,4 @@
-package com.example.demo.appointment;
+package com.example.demo.appointment.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;

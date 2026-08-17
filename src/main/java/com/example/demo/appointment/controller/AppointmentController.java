@@ -1,7 +1,8 @@
-package com.example.demo.appointment;
+package com.example.demo.appointment.controller;
 
 import com.example.demo.appointment.dto.AppointmentRequestDto;
 import com.example.demo.appointment.dto.AppointmentResponseDto;
+import com.example.demo.appointment.service.AppointmentService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
