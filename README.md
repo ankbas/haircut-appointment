@@ -39,12 +39,13 @@ Used by `POST` and `PUT`:
 {
   "name": "Alex Johnson",
   "phoneNumber": "555-123-4567",
+  "email": "alex.johnson@example.com",
   "appointmentDate": "2099-08-20",
   "appointmentTime": "14:30"
 }
 ```
 
-All fields are required. The date must be in the future, and the phone number must contain 7-25 valid phone characters. Unknown fields are rejected.
+All fields are required. The email must be valid, the date must be in the future, and the phone number must contain 7-25 valid phone characters. Unknown fields are rejected.
 
 ### Error responses
 

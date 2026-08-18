@@ -26,6 +26,7 @@ public class AppointmentService {
         ensureSlotIsAvailable(request, null);
         Appointment appointment = new Appointment(
                 request.name().trim(), request.phoneNumber().trim(),
+                request.email().trim(),
                 request.appointmentDate(), request.appointmentTime());
         return AppointmentResponseDto.from(repository.save(appointment));
     }
@@ -44,7 +45,7 @@ public class AppointmentService {
     public AppointmentResponseDto update(Long id, AppointmentRequestDto request) {
         Appointment appointment = findEntity(id);
         ensureSlotIsAvailable(request, id);
-        appointment.update(request.name().trim(), request.phoneNumber().trim(),
+        appointment.update(request.name().trim(), request.phoneNumber().trim(), request.email().trim(),
                 request.appointmentDate(), request.appointmentTime());
         return AppointmentResponseDto.from(appointment);
     }

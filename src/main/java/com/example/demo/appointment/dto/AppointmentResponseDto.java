@@ -12,6 +12,7 @@ public record AppointmentResponseDto(
         Long id,
         String name,
         String phoneNumber,
+        String email,
         LocalDate appointmentDate,
         LocalTime appointmentTime) {
 
@@ -20,6 +21,7 @@ public record AppointmentResponseDto(
                 appointment.getId(),
                 appointment.getName(),
                 appointment.getPhoneNumber(),
+                appointment.getEmail(),
                 appointment.getAppointmentDate(),
                 appointment.getAppointmentTime());
     }
