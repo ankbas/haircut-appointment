@@ -105,9 +105,25 @@ class AppointmentApiTests {
                                 {"name":"", "phoneNumber":"abc", "appointmentDate":"2000-01-01"}
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors.name").exists())
-                .andExpect(jsonPath("$.errors.phoneNumber").exists())
-                .andExpect(jsonPath("$.errors.appointmentDate").exists())
-                .andExpect(jsonPath("$.errors.appointmentTime").exists());
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.errors.name").value("Name is required"))
+                .andExpect(jsonPath("$.errors.phoneNumber").value("Phone number format is invalid"))
+                .andExpect(jsonPath("$.errors.appointmentDate").value("Appointment date must be in the future"))
+                .andExpect(jsonPath("$.errors.appointmentTime").value("Appointment time is required"));
+    }
+
+    @Test
+    void rejectsInvalidPathIdAndMalformedJson() throws Exception {
+        mockMvc.perform(get("/api/appointments/0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.errors.id").value("Appointment ID must be positive"));
+
+        mockMvc.perform(post("/api/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{invalid-json}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.errors.request").exists());
     }
 }

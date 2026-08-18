@@ -44,7 +44,7 @@ Used by `POST` and `PUT`:
 }
 ```
 
-All fields are required. The date must be today or later, and the phone number must contain 7–25 valid phone characters. Unknown fields are rejected.
+All fields are required. The date must be in the future, and the phone number must contain 7-25 valid phone characters. Unknown fields are rejected.
 
 ### Error responses
 
