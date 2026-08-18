@@ -4,6 +4,7 @@ import com.example.demo.appointment.dto.AppointmentRequestDto;
 import com.example.demo.appointment.dto.AppointmentResponseDto;
 import com.example.demo.appointment.service.AppointmentService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,12 +15,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.validation.annotation.Validated;
 
 import java.net.URI;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/appointments")
+@Validated
 public class AppointmentController {
 
     private final AppointmentService service;
@@ -42,18 +45,21 @@ public class AppointmentController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AppointmentResponseDto> findById(@PathVariable Long id) {
+    public ResponseEntity<AppointmentResponseDto> findById(
+            @PathVariable @Positive(message = "Appointment ID must be positive") Long id) {
         return ResponseEntity.ok(service.findById(id));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<AppointmentResponseDto> update(
-            @PathVariable Long id, @Valid @RequestBody AppointmentRequestDto request) {
+            @PathVariable @Positive(message = "Appointment ID must be positive") Long id,
+            @Valid @RequestBody AppointmentRequestDto request) {
         return ResponseEntity.ok(service.update(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(
+            @PathVariable @Positive(message = "Appointment ID must be positive") Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();
     }
