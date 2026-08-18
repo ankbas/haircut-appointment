@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -84,6 +85,8 @@ class AppointmentApiTests {
 
         mockMvc.perform(get(location))
                 .andExpect(status().isNotFound())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.title").value("Appointment not found"));
     }
 
@@ -96,6 +99,8 @@ class AppointmentApiTests {
         mockMvc.perform(post("/api/appointments")
                         .contentType(MediaType.APPLICATION_JSON).content(APPOINTMENT))
                 .andExpect(status().isConflict())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(409))
                 .andExpect(jsonPath("$.title").value("Appointment slot unavailable"));
     }
 
@@ -107,6 +112,8 @@ class AppointmentApiTests {
                                 {"name":"", "phoneNumber":"abc", "email":"not-an-email", "appointmentDate":"2000-01-01"}
                                 """))
                 .andExpect(status().isBadRequest())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.title").value("Validation failed"))
                 .andExpect(jsonPath("$.errors.name").value("Name is required"))
                 .andExpect(jsonPath("$.errors.phoneNumber").value("Phone number format is invalid"))
@@ -122,9 +129,23 @@ class AppointmentApiTests {
                 .andExpect(jsonPath("$.title").value("Validation failed"))
                 .andExpect(jsonPath("$.errors.id").value("Appointment ID must be positive"));
 
+        mockMvc.perform(get("/api/appointments/not-a-number"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.errors.id").value("Value has an invalid format"));
+
         mockMvc.perform(post("/api/appointments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{invalid-json}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.errors.request").exists());
+
+        mockMvc.perform(post("/api/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(APPOINTMENT.replace(
+                                "\"appointmentTime\": \"14:30\"",
+                                "\"appointmentTime\": \"14:30\", \"unexpected\": true")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Validation failed"))
                 .andExpect(jsonPath("$.errors.request").exists());

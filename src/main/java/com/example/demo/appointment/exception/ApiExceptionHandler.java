@@ -6,9 +6,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.net.URI;
 import java.util.LinkedHashMap;
@@ -25,6 +27,14 @@ public class ApiExceptionHandler {
     @ExceptionHandler(AppointmentConflictException.class)
     ResponseEntity<ProblemDetail> handleConflict(AppointmentConflictException exception) {
         return response(HttpStatus.CONFLICT, "Appointment slot unavailable", exception.getMessage());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ProblemDetail> handleDataConflict(DataIntegrityViolationException exception) {
+        return response(
+                HttpStatus.CONFLICT,
+                "Appointment slot unavailable",
+                "That appointment date and time is already booked");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -49,6 +59,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ProblemDetail> handleUnreadableRequest(HttpMessageNotReadableException exception) {
         return validationResponse(Map.of("request", "Request body is missing or contains invalid JSON"));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ProblemDetail> handleTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        return validationResponse(Map.of(exception.getName(), "Value has an invalid format"));
     }
 
     private ResponseEntity<ProblemDetail> validationResponse(Map<String, String> errors) {
