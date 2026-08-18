@@ -26,6 +26,9 @@ public class Appointment {
     @Column(name = "phone_number", nullable = false, length = 25)
     private String phoneNumber;
 
+    @Column(nullable = false, length = 254)
+    private String email;
+
     @Column(name = "appointment_date", nullable = false)
     private LocalDate appointmentDate;
 
@@ -35,13 +38,18 @@ public class Appointment {
     protected Appointment() {
     }
 
-    public Appointment(String name, String phoneNumber, LocalDate appointmentDate, LocalTime appointmentTime) {
-        update(name, phoneNumber, appointmentDate, appointmentTime);
+    public Appointment(
+            String name, String phoneNumber, String email,
+            LocalDate appointmentDate, LocalTime appointmentTime) {
+        update(name, phoneNumber, email, appointmentDate, appointmentTime);
     }
 
-    public void update(String name, String phoneNumber, LocalDate appointmentDate, LocalTime appointmentTime) {
+    public void update(
+            String name, String phoneNumber, String email,
+            LocalDate appointmentDate, LocalTime appointmentTime) {
         this.name = name;
         this.phoneNumber = phoneNumber;
+        this.email = email;
         this.appointmentDate = appointmentDate;
         this.appointmentTime = appointmentTime;
     }
@@ -49,6 +57,7 @@ public class Appointment {
     public Long getId() { return id; }
     public String getName() { return name; }
     public String getPhoneNumber() { return phoneNumber; }
+    public String getEmail() { return email; }
     public LocalDate getAppointmentDate() { return appointmentDate; }
     public LocalTime getAppointmentTime() { return appointmentTime; }
 }

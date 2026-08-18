@@ -1,6 +1,7 @@
 package com.example.demo.appointment.dto;
 
 import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -20,6 +21,10 @@ public record AppointmentRequestDto(
         @Size(max = 25, message = "Phone number must not exceed 25 characters")
         @Pattern(regexp = "^[0-9+().\\- ]{7,25}$", message = "Phone number format is invalid")
         String phoneNumber,
+        @NotBlank(message = "Email is required")
+        @Email(message = "Email format is invalid")
+        @Size(max = 254, message = "Email must not exceed 254 characters")
+        String email,
         @NotNull(message = "Appointment date is required")
         @Future(message = "Appointment date must be in the future")
         LocalDate appointmentDate,

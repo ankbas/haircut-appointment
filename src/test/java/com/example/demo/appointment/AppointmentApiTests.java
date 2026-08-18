@@ -25,6 +25,7 @@ class AppointmentApiTests {
             {
               "name": "John Smith",
               "phoneNumber": "312-555-1234",
+              "email": "john.smith@example.com",
               "appointmentDate": "2099-08-20",
               "appointmentTime": "14:30"
             }
@@ -50,6 +51,7 @@ class AppointmentApiTests {
                 .andExpect(header().exists("Location"))
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.name").value("John Smith"))
+                .andExpect(jsonPath("$.email").value("john.smith@example.com"))
                 .andReturn().getResponse().getHeader("Location");
 
         mockMvc.perform(get(location))
@@ -102,12 +104,13 @@ class AppointmentApiTests {
         mockMvc.perform(post("/api/appointments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"", "phoneNumber":"abc", "appointmentDate":"2000-01-01"}
+                                {"name":"", "phoneNumber":"abc", "email":"not-an-email", "appointmentDate":"2000-01-01"}
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.title").value("Validation failed"))
                 .andExpect(jsonPath("$.errors.name").value("Name is required"))
                 .andExpect(jsonPath("$.errors.phoneNumber").value("Phone number format is invalid"))
+                .andExpect(jsonPath("$.errors.email").value("Email format is invalid"))
                 .andExpect(jsonPath("$.errors.appointmentDate").value("Appointment date must be in the future"))
                 .andExpect(jsonPath("$.errors.appointmentTime").value("Appointment time is required"));
     }
