@@ -1,11 +1,30 @@
 # Haircut Appointment API
 
-A Spring Boot REST API for creating and managing haircut appointments. Appointments are stored in a local H2 database, and duplicate date/time bookings are rejected.
+A Spring Boot REST API for creating and managing haircut appointments. Appointments are stored in PostgreSQL, and duplicate date/time bookings are rejected.
 
 ## Requirements
 
 - Java 17+
-- No external database required
+- PostgreSQL 16+
+
+## Database setup
+
+PostgreSQL must be running locally. In DBeaver, connect to the default `postgres` database as an administrator, open a SQL editor, and run:
+
+```sql
+CREATE USER root WITH PASSWORD 'replace-with-a-strong-password';
+CREATE DATABASE haircut_appointments OWNER root;
+```
+
+Set the database password in the terminal before starting the application:
+
+```powershell
+$env:DB_PASSWORD="your-local-password"
+```
+
+The default connection uses `localhost:5432`, database `haircut_appointments`, and user `root`. The password has no default and must be supplied through `DB_PASSWORD`. Override the other values when needed with `DB_URL` and `DB_USERNAME`.
+
+Flyway creates and versions the schema automatically. Hibernate validates the schema but does not modify it.
 
 ## Run locally
 
@@ -69,4 +88,4 @@ The appointment feature is organized into `controller`, `service`, `repository`,
 .\mvnw.cmd test
 ```
 
-The application uses a file-based H2 database at `./data/appointments`. Tests use a separate in-memory database.
+The application uses PostgreSQL. Automated tests use a separate in-memory H2 database and do not modify local PostgreSQL data.
