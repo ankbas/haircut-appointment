@@ -18,11 +18,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:h2:mem:appointments-api-test;DB_CLOSE_DELAY=-1",
-        "spring.datasource.username=sa",
-        "spring.datasource.password="
-})
+@SpringBootTest(properties =
+        "spring.datasource.url=${TEST_DB_URL:jdbc:postgresql://localhost:5432/haircut_appointments_test}")
 @AutoConfigureMockMvc
 class AppointmentApiTests {
 

@@ -22,6 +22,15 @@ Set the database password in the terminal before starting the application:
 $env:DB_PASSWORD="your-local-password"
 ```
 
+Alternatively, create an `application-secrets.properties` file in the project root:
+
+```properties
+spring.datasource.username=your-local-username
+spring.datasource.password=your-local-password
+```
+
+This file is ignored by Git and loaded automatically for local development.
+
 The default connection uses `localhost:5432`, database `haircut_appointments`, and user `root`. The password has no default and must be supplied through `DB_PASSWORD`. Override the other values when needed with `DB_URL` and `DB_USERNAME`.
 
 Flyway creates and versions the schema automatically. Hibernate validates the schema but does not modify it.
@@ -88,4 +97,4 @@ The appointment feature is organized into `controller`, `service`, `repository`,
 .\mvnw.cmd test
 ```
 
-The application uses PostgreSQL. Automated tests use a separate in-memory H2 database and do not modify local PostgreSQL data.
+The application and automated tests both use PostgreSQL. Tests use the separate `haircut_appointments_test` database and never modify development data.
