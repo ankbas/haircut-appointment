@@ -9,6 +9,7 @@ data/appointments.trace.db
 .idea/
 
 # Local secrets and credentials
+application-secrets.properties
 .env
 .env.*
 !.env.example
