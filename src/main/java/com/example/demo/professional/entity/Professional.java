@@ -9,12 +9,17 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Table;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
+import java.util.Optional;
 
 @Entity
 @Table(name = "professionals")
@@ -40,11 +45,17 @@ public class Professional {
             inverseJoinColumns = @JoinColumn(name = "service_id"))
     private Set<SalonService> services = new LinkedHashSet<>();
 
+    @OneToMany(mappedBy = "professional", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ProfessionalWorkingHours> workingHours = new LinkedHashSet<>();
+
     protected Professional() {
     }
 
     public Professional(String name, String bio, boolean active) {
         update(name, bio, active);
+        for (DayOfWeek day : DayOfWeek.values()) {
+            setWorkingHours(day, LocalTime.of(9, 0), LocalTime.of(18, 0));
+        }
     }
 
     public void update(String name, String bio, boolean active) {
@@ -61,6 +72,26 @@ public class Professional {
         services.remove(service);
     }
 
+    public boolean offers(SalonService service) {
+        return services.contains(service);
+    }
+
+    public void setWorkingHours(DayOfWeek day, LocalTime startTime, LocalTime endTime) {
+        ProfessionalWorkingHours hours = workingHours.stream()
+                .filter(existing -> existing.getDayOfWeek() == day)
+                .findFirst()
+                .orElse(null);
+        if (hours == null) {
+            workingHours.add(new ProfessionalWorkingHours(this, day, startTime, endTime));
+        } else {
+            hours.update(startTime, endTime);
+        }
+    }
+
+    public Optional<ProfessionalWorkingHours> workingHoursFor(DayOfWeek day) {
+        return workingHours.stream().filter(hours -> hours.getDayOfWeek() == day).findFirst();
+    }
+
     private String requireText(String value, String message) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(message);
@@ -73,4 +104,7 @@ public class Professional {
     public String getBio() { return bio; }
     public boolean isActive() { return active; }
     public Set<SalonService> getServices() { return Collections.unmodifiableSet(services); }
+    public Set<ProfessionalWorkingHours> getWorkingHours() {
+        return Collections.unmodifiableSet(workingHours);
+    }
 }

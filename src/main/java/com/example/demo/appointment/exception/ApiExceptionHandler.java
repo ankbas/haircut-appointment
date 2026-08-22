@@ -24,6 +24,21 @@ public class ApiExceptionHandler {
         return response(HttpStatus.NOT_FOUND, "Appointment not found", exception.getMessage());
     }
 
+    @ExceptionHandler(ProfessionalNotFoundException.class)
+    ResponseEntity<ProblemDetail> handleProfessionalNotFound(ProfessionalNotFoundException exception) {
+        return response(HttpStatus.NOT_FOUND, "Professional not found", exception.getMessage());
+    }
+
+    @ExceptionHandler(SalonServiceNotFoundException.class)
+    ResponseEntity<ProblemDetail> handleServiceNotFound(SalonServiceNotFoundException exception) {
+        return response(HttpStatus.NOT_FOUND, "Service not found", exception.getMessage());
+    }
+
+    @ExceptionHandler(InvalidBookingException.class)
+    ResponseEntity<ProblemDetail> handleInvalidBooking(InvalidBookingException exception) {
+        return response(HttpStatus.BAD_REQUEST, "Invalid booking", exception.getMessage());
+    }
+
     @ExceptionHandler(AppointmentConflictException.class)
     ResponseEntity<ProblemDetail> handleConflict(AppointmentConflictException exception) {
         return response(HttpStatus.CONFLICT, "Appointment slot unavailable", exception.getMessage());

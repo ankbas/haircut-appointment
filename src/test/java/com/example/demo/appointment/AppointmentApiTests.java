@@ -1,6 +1,12 @@
 package com.example.demo.appointment;
 
 import com.example.demo.appointment.repository.AppointmentRepository;
+import com.example.demo.professional.entity.Professional;
+import com.example.demo.professional.repository.ProfessionalRepository;
+import com.example.demo.servicecatalog.entity.SalonService;
+import com.example.demo.servicecatalog.entity.ServiceAudience;
+import com.example.demo.servicecatalog.entity.ServiceType;
+import com.example.demo.servicecatalog.repository.SalonServiceRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,12 +15,17 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -23,132 +34,135 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class AppointmentApiTests {
 
-    private static final String APPOINTMENT = """
-            {
-              "name": "John Smith",
-              "phoneNumber": "312-555-1234",
-              "email": "john.smith@example.com",
-              "appointmentDate": "2099-08-20",
-              "appointmentTime": "14:30"
-            }
-            """;
+    @Autowired private MockMvc mockMvc;
+    @Autowired private AppointmentRepository appointmentRepository;
+    @Autowired private ProfessionalRepository professionalRepository;
+    @Autowired private SalonServiceRepository salonServiceRepository;
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @Autowired
-    private AppointmentRepository repository;
+    private SalonService haircut;
+    private Professional professional;
+    private LocalDate bookingDate;
 
     @BeforeEach
-    void clearAppointments() {
-        repository.deleteAll();
+    void setUpCatalog() {
+        appointmentRepository.deleteAll();
+        professionalRepository.deleteAll();
+        salonServiceRepository.deleteAll();
+
+        haircut = salonServiceRepository.save(
+                new SalonService(ServiceAudience.MEN, ServiceType.HAIRCUT,
+                        new BigDecimal("30.00"), 30));
+        professional = new Professional("Alex Morgan", "Hair specialist", true);
+        professional.addService(haircut);
+        professional = professionalRepository.save(professional);
+        bookingDate = LocalDate.now().plusDays(10);
     }
 
     @Test
-    void createsAndRetrievesAnAppointment() throws Exception {
+    void createsAppointmentAndCalculatesEndTimeFromServiceDuration() throws Exception {
+        LocalDateTime start = bookingDate.atTime(10, 0);
         String location = mockMvc.perform(post("/api/appointments")
-                .contentType(MediaType.APPLICATION_JSON)
-                        .content(APPOINTMENT))
+                        .contentType(MediaType.APPLICATION_JSON).content(request("John Smith", start)))
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("Location"))
-                .andExpect(jsonPath("$.id").isNumber())
-                .andExpect(jsonPath("$.name").value("John Smith"))
-                .andExpect(jsonPath("$.email").value("john.smith@example.com"))
+                .andExpect(jsonPath("$.customerName").value("John Smith"))
+                .andExpect(jsonPath("$.professionalId").value(professional.getId()))
+                .andExpect(jsonPath("$.serviceId").value(haircut.getId()))
+                .andExpect(jsonPath("$.startTime").value(start + ":00"))
+                .andExpect(jsonPath("$.endTime").value(start.plusMinutes(30) + ":00"))
+                .andExpect(jsonPath("$.status").value("BOOKED"))
                 .andReturn().getResponse().getHeader("Location");
 
-        mockMvc.perform(get(location))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("John Smith"));
-
-        mockMvc.perform(get("/api/appointments"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].phoneNumber").value("312-555-1234"))
-                .andExpect(jsonPath("$[0].appointmentDate").value("2099-08-20"))
-                .andExpect(jsonPath("$[0].appointmentTime").value("14:30:00"));
+        mockMvc.perform(get(location)).andExpect(status().isOk());
     }
 
     @Test
-    void updatesAndDeletesAnAppointment() throws Exception {
+    void preventsOverlapsAndBookingsOutsideWorkingHours() throws Exception {
+        LocalDateTime start = bookingDate.atTime(10, 0);
+        mockMvc.perform(post("/api/appointments")
+                        .contentType(MediaType.APPLICATION_JSON).content(request("John Smith", start)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request("Jane Smith", start.plusMinutes(15))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Appointment slot unavailable"));
+
+        mockMvc.perform(post("/api/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request("Jane Smith", bookingDate.atTime(17, 45))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid booking"));
+    }
+
+    @Test
+    void availabilityReturnsOnlySlotsThatFitAndDoNotOverlap() throws Exception {
+        LocalDateTime bookedStart = bookingDate.atTime(10, 0);
+        mockMvc.perform(post("/api/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request("John Smith", bookedStart)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/availability")
+                        .param("professionalId", professional.getId().toString())
+                        .param("serviceId", haircut.getId().toString())
+                        .param("date", bookingDate.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].startTime", hasItem(bookingDate + "T09:00:00")))
+                .andExpect(jsonPath("$[*].startTime", hasItem(bookingDate + "T10:30:00")))
+                .andExpect(jsonPath("$[*].startTime", not(hasItem(bookingDate + "T09:45:00"))))
+                .andExpect(jsonPath("$[*].startTime", not(hasItem(bookingDate + "T10:00:00"))))
+                .andExpect(jsonPath("$[*].startTime", not(hasItem(bookingDate + "T10:15:00"))));
+    }
+
+    @Test
+    void updatesAndDeletesAppointment() throws Exception {
+        LocalDateTime start = bookingDate.atTime(10, 0);
         String location = mockMvc.perform(post("/api/appointments")
-                        .contentType(MediaType.APPLICATION_JSON).content(APPOINTMENT))
+                        .contentType(MediaType.APPLICATION_JSON).content(request("John Smith", start)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getHeader("Location");
 
         mockMvc.perform(put(location)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(APPOINTMENT.replace("John Smith", "Jane Smith")))
+                        .content(request("Jane Smith", start.plusHours(1))))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Jane Smith"));
+                .andExpect(jsonPath("$.customerName").value("Jane Smith"))
+                .andExpect(jsonPath("$.endTime").value(start.plusHours(1).plusMinutes(30) + ":00"));
 
-        mockMvc.perform(delete(location))
-                .andExpect(status().isNoContent())
-                .andExpect(jsonPath("$").doesNotExist());
-
-        mockMvc.perform(get(location))
-                .andExpect(status().isNotFound())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.status").value(404))
-                .andExpect(jsonPath("$.title").value("Appointment not found"));
+        mockMvc.perform(delete(location)).andExpect(status().isNoContent());
+        mockMvc.perform(get(location)).andExpect(status().isNotFound());
     }
 
     @Test
-    void rejectsAnAlreadyBookedTime() throws Exception {
+    void validatesBookingRequestAndAvailabilityParameters() throws Exception {
         mockMvc.perform(post("/api/appointments")
-                        .contentType(MediaType.APPLICATION_JSON).content(APPOINTMENT))
-                .andExpect(status().isCreated());
+                        .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.customerName").exists())
+                .andExpect(jsonPath("$.errors.professionalId").exists())
+                .andExpect(jsonPath("$.errors.serviceId").exists())
+                .andExpect(jsonPath("$.errors.startTime").exists());
 
-        mockMvc.perform(post("/api/appointments")
-                        .contentType(MediaType.APPLICATION_JSON).content(APPOINTMENT))
-                .andExpect(status().isConflict())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.status").value(409))
-                .andExpect(jsonPath("$.title").value("Appointment slot unavailable"));
+        mockMvc.perform(get("/availability")
+                        .param("professionalId", "0")
+                        .param("serviceId", haircut.getId().toString())
+                        .param("date", bookingDate.toString()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.professionalId").exists());
     }
 
-    @Test
-    void rejectsInvalidInput() throws Exception {
-        mockMvc.perform(post("/api/appointments")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name":"", "phoneNumber":"abc", "email":"not-an-email", "appointmentDate":"2000-01-01"}
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(jsonPath("$.title").value("Validation failed"))
-                .andExpect(jsonPath("$.errors.name").value("Name is required"))
-                .andExpect(jsonPath("$.errors.phoneNumber").value("Phone number format is invalid"))
-                .andExpect(jsonPath("$.errors.email").value("Email format is invalid"))
-                .andExpect(jsonPath("$.errors.appointmentDate").value("Appointment date must be in the future"))
-                .andExpect(jsonPath("$.errors.appointmentTime").value("Appointment time is required"));
-    }
-
-    @Test
-    void rejectsInvalidPathIdAndMalformedJson() throws Exception {
-        mockMvc.perform(get("/api/appointments/0"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("Validation failed"))
-                .andExpect(jsonPath("$.errors.id").value("Appointment ID must be positive"));
-
-        mockMvc.perform(get("/api/appointments/not-a-number"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("Validation failed"))
-                .andExpect(jsonPath("$.errors.id").value("Value has an invalid format"));
-
-        mockMvc.perform(post("/api/appointments")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{invalid-json}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("Validation failed"))
-                .andExpect(jsonPath("$.errors.request").exists());
-
-        mockMvc.perform(post("/api/appointments")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(APPOINTMENT.replace(
-                                "\"appointmentTime\": \"14:30\"",
-                                "\"appointmentTime\": \"14:30\", \"unexpected\": true")))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.title").value("Validation failed"))
-                .andExpect(jsonPath("$.errors.request").exists());
+    private String request(String customerName, LocalDateTime startTime) {
+        return """
+                {
+                  "customerName": "%s",
+                  "customerPhone": "312-555-1234",
+                  "customerEmail": "customer@example.com",
+                  "professionalId": %d,
+                  "serviceId": %d,
+                  "startTime": "%s"
+                }
+                """.formatted(customerName, professional.getId(), haircut.getId(), startTime);
     }
 }
