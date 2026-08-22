@@ -23,6 +23,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -77,7 +78,7 @@ class AppointmentApiTests {
     }
 
     @Test
-    void preventsOverlapsAndBookingsOutsideWorkingHours() throws Exception {
+    void preventsDoubleBookingButAllowsAdjacentAppointments() throws Exception {
         LocalDateTime start = bookingDate.atTime(10, 0);
         mockMvc.perform(post("/api/appointments")
                         .contentType(MediaType.APPLICATION_JSON).content(request("John Smith", start)))
@@ -88,6 +89,15 @@ class AppointmentApiTests {
                         .content(request("Jane Smith", start.plusMinutes(15))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.title").value("Appointment slot unavailable"));
+
+        mockMvc.perform(post("/api/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request("Jane Smith", start.plusMinutes(30))))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void rejectsAppointmentsOutsideWorkingHours() throws Exception {
 
         mockMvc.perform(post("/api/appointments")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -117,20 +127,69 @@ class AppointmentApiTests {
     }
 
     @Test
-    void updatesAndDeletesAppointment() throws Exception {
+    void cancellationPreservesAppointmentAndReleasesItsTimeSlot() throws Exception {
         LocalDateTime start = bookingDate.atTime(10, 0);
-        String location = mockMvc.perform(post("/api/appointments")
-                        .contentType(MediaType.APPLICATION_JSON).content(request("John Smith", start)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getHeader("Location");
+        String location = createAppointment("John Smith", start);
+
+        mockMvc.perform(patch(location + "/cancel"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        mockMvc.perform(get(location))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        mockMvc.perform(post("/api/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request("Jane Smith", start)))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void reschedulingReleasesOldSlotAndReservesNewSlot() throws Exception {
+        LocalDateTime start = bookingDate.atTime(10, 0);
+        LocalDateTime rescheduledStart = start.plusHours(1);
+        String location = createAppointment("John Smith", start);
 
         mockMvc.perform(put(location)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(request("Jane Smith", start.plusHours(1))))
+                        .content(request("Jane Smith", rescheduledStart)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.customerName").value("Jane Smith"))
-                .andExpect(jsonPath("$.endTime").value(start.plusHours(1).plusMinutes(30) + ":00"));
+                .andExpect(jsonPath("$.startTime").value(rescheduledStart + ":00"))
+                .andExpect(jsonPath("$.endTime").value(rescheduledStart.plusMinutes(30) + ":00"));
 
+        mockMvc.perform(post("/api/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request("Open old slot", start)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request("Blocked new slot", rescheduledStart)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void rejectsReschedulingIntoAnOccupiedSlotWithoutChangingAppointment() throws Exception {
+        LocalDateTime originalStart = bookingDate.atTime(10, 0);
+        LocalDateTime occupiedStart = bookingDate.atTime(11, 0);
+        String location = createAppointment("John Smith", originalStart);
+        createAppointment("Jane Smith", occupiedStart);
+
+        mockMvc.perform(put(location)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request("John Smith", occupiedStart)))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(get(location))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.startTime").value(originalStart + ":00"));
+    }
+
+    @Test
+    void deletesAppointment() throws Exception {
+        String location = createAppointment("John Smith", bookingDate.atTime(10, 0));
         mockMvc.perform(delete(location)).andExpect(status().isNoContent());
         mockMvc.perform(get(location)).andExpect(status().isNotFound());
     }
@@ -164,5 +223,13 @@ class AppointmentApiTests {
                   "startTime": "%s"
                 }
                 """.formatted(customerName, professional.getId(), haircut.getId(), startTime);
+    }
+
+    private String createAppointment(String customerName, LocalDateTime startTime) throws Exception {
+        return mockMvc.perform(post("/api/appointments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request(customerName, startTime)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getHeader("Location");
     }
 }

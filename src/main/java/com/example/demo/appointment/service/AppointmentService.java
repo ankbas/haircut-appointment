@@ -3,6 +3,7 @@ package com.example.demo.appointment.service;
 import com.example.demo.appointment.dto.AppointmentRequestDto;
 import com.example.demo.appointment.dto.AppointmentResponseDto;
 import com.example.demo.appointment.entity.Appointment;
+import com.example.demo.appointment.entity.AppointmentStatus;
 import com.example.demo.appointment.exception.AppointmentConflictException;
 import com.example.demo.appointment.exception.AppointmentNotFoundException;
 import com.example.demo.appointment.exception.InvalidBookingException;
@@ -60,11 +61,23 @@ public class AppointmentService {
 
     public AppointmentResponseDto update(Long id, AppointmentRequestDto request) {
         Appointment appointment = findEntity(id);
+        if (appointment.getStatus() != AppointmentStatus.BOOKED) {
+            throw new InvalidBookingException("Only booked appointments can be rescheduled");
+        }
         Booking booking = resolveBooking(request);
         ensureBookable(booking, id);
         appointment.update(
                 request.customerName(), request.customerPhone(), request.customerEmail(),
                 booking.professional(), booking.service(), request.startTime());
+        return AppointmentResponseDto.from(appointment);
+    }
+
+    public AppointmentResponseDto cancel(Long id) {
+        Appointment appointment = findEntity(id);
+        if (appointment.getStatus() == AppointmentStatus.COMPLETED) {
+            throw new InvalidBookingException("Completed appointments cannot be cancelled");
+        }
+        appointment.changeStatus(AppointmentStatus.CANCELLED);
         return AppointmentResponseDto.from(appointment);
     }
 
