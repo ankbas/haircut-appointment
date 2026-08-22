@@ -57,6 +57,7 @@ Base URL: `http://localhost:8080`
 | `GET` | `/api/appointments` | `200 OK` | List appointments by date and time |
 | `GET` | `/api/appointments/{id}` | `200 OK` | Get an appointment |
 | `PUT` | `/api/appointments/{id}` | `200 OK` | Replace an appointment |
+| `PATCH` | `/api/appointments/{id}/cancel` | `200 OK` | Cancel an appointment without deleting it |
 | `DELETE` | `/api/appointments/{id}` | `204 No Content` | Delete an appointment |
 | `GET` | `/availability?professionalId=1&serviceId=1&date=2099-08-20` | `200 OK` | List bookable time slots |
 
