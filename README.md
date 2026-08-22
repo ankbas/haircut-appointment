@@ -1,6 +1,6 @@
 # Haircut Appointment API
 
-A Spring Boot REST API for creating and managing haircut appointments. Appointments are stored in PostgreSQL, and duplicate date/time bookings are rejected.
+A Spring Boot REST API for managing salon professionals, services, appointments, and real-time availability. PostgreSQL stores the data, Flyway versions the schema, and bookings are checked against working hours and existing appointments.
 
 ## Requirements
 
@@ -47,7 +47,7 @@ Flyway creates and versions the schema automatically. Hibernate validates the sc
 ./mvnw spring-boot:run
 ```
 
-Base URL: `http://localhost:8080/api/appointments`
+Base URL: `http://localhost:8080`
 
 ## API
 
@@ -58,6 +58,7 @@ Base URL: `http://localhost:8080/api/appointments`
 | `GET` | `/api/appointments/{id}` | `200 OK` | Get an appointment |
 | `PUT` | `/api/appointments/{id}` | `200 OK` | Replace an appointment |
 | `DELETE` | `/api/appointments/{id}` | `204 No Content` | Delete an appointment |
+| `GET` | `/availability?professionalId=1&serviceId=1&date=2099-08-20` | `200 OK` | List bookable time slots |
 
 ### Request body
 
@@ -65,15 +66,16 @@ Used by `POST` and `PUT`:
 
 ```json
 {
-  "name": "Alex Johnson",
-  "phoneNumber": "555-123-4567",
-  "email": "alex.johnson@example.com",
-  "appointmentDate": "2099-08-20",
-  "appointmentTime": "14:30"
+  "customerName": "Alex Johnson",
+  "customerPhone": "555-123-4567",
+  "customerEmail": "alex.johnson@example.com",
+  "professionalId": 1,
+  "serviceId": 1,
+  "startTime": "2099-08-20T14:30:00"
 }
 ```
 
-All fields are required. The email must be valid, the date must be in the future, and the phone number must contain 7-25 valid phone characters. Unknown fields are rejected.
+All fields are required. The email and phone must be valid and the start time must be in the future. The API calculates the end time from the service duration. A booking must be within the professional's working hours, the professional must offer the service, and active appointments cannot overlap. Professionals receive a default Monday-Sunday schedule of 9:00 AM-6:00 PM.
 
 ### Error responses
 
@@ -82,14 +84,14 @@ Errors use the standard `ProblemDetail` JSON format:
 | Status | Meaning |
 | --- | --- |
 | `400 Bad Request` | Invalid request data |
-| `404 Not Found` | Appointment ID does not exist |
-| `409 Conflict` | Date and time are already booked |
+| `404 Not Found` | Appointment, professional, or service does not exist |
+| `409 Conflict` | The professional already has an overlapping appointment |
 
 Validation responses also include an `errors` object containing messages for each invalid field.
 
 ## Project structure
 
-The appointment feature is organized into `controller`, `service`, `repository`, `entity`, `dto`, and `exception` packages.
+Features are organized into `controller`, `service`, `repository`, `entity`, `dto`, and `exception` packages.
 
 ## Tests
 
