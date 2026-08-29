@@ -2,6 +2,7 @@ package com.example.demo.appointment.entity;
 
 import com.example.demo.professional.entity.Professional;
 import com.example.demo.servicecatalog.entity.SalonService;
+import com.example.demo.salon.entity.Salon;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -25,6 +26,10 @@ public class Appointment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "salon_id", nullable = false)
+    private Salon salon;
 
     @Column(name = "confirmation_number", nullable = false, unique = true, length = 20)
     private String confirmationNumber;
@@ -60,8 +65,9 @@ public class Appointment {
     }
 
     public Appointment(
-            String customerName, String customerPhone, String customerEmail,
+            Salon salon, String customerName, String customerPhone, String customerEmail,
             Professional professional, SalonService service, LocalDateTime startTime) {
+        this.salon = Objects.requireNonNull(salon, "Salon is required");
         this.status = AppointmentStatus.BOOKED;
         this.confirmationNumber = "ATL-" + UUID.randomUUID().toString()
                 .replace("-", "").substring(0, 8).toUpperCase();
@@ -76,6 +82,13 @@ public class Appointment {
         this.customerEmail = requireText(customerEmail, "Customer email is required");
         this.professional = Objects.requireNonNull(professional, "Professional is required");
         this.service = Objects.requireNonNull(service, "Service is required");
+        boolean sameProfessionalSalon = salon == professional.getSalon()
+                || (salon.getId() != null && Objects.equals(salon.getId(), professional.getSalon().getId()));
+        boolean sameServiceSalon = salon == service.getSalon()
+                || (salon.getId() != null && Objects.equals(salon.getId(), service.getSalon().getId()));
+        if (!sameProfessionalSalon || !sameServiceSalon) {
+            throw new IllegalArgumentException("Appointment resources must belong to its salon");
+        }
         this.startTime = Objects.requireNonNull(startTime, "Start time is required");
         this.endTime = startTime.plusMinutes(service.getDurationMinutes());
     }
@@ -92,6 +105,7 @@ public class Appointment {
     }
 
     public Long getId() { return id; }
+    public Salon getSalon() { return salon; }
     public String getConfirmationNumber() { return confirmationNumber; }
     public String getCustomerName() { return customerName; }
     public String getCustomerPhone() { return customerPhone; }

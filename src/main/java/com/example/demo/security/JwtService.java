@@ -33,7 +33,7 @@ public class JwtService {
     public String issue(UserAccount user) {
         long now = Instant.now().getEpochSecond();
         String unsigned = encode(Map.of("alg", "HS256", "typ", "JWT")) + "." +
-                encode(Map.of("sub", user.getUsername(), "role", user.getRole().name(), "iat", now, "exp", now + expirationSeconds));
+                encode(Map.of("sub", user.getUsername(), "role", user.getRole().name(), "salonId", user.getSalon().getId(), "iat", now, "exp", now + expirationSeconds));
         return unsigned + "." + Base64.getUrlEncoder().withoutPadding().encodeToString(sign(unsigned));
     }
 
@@ -45,12 +45,12 @@ public class JwtService {
             if (!MessageDigest.isEqual(sign(unsigned), Base64.getUrlDecoder().decode(parts[2]))) throw new IllegalArgumentException("Invalid signature");
             @SuppressWarnings("unchecked") Map<String,Object> payload = mapper.readValue(Base64.getUrlDecoder().decode(parts[1]), Map.class);
             if (((Number) payload.get("exp")).longValue() <= Instant.now().getEpochSecond()) throw new IllegalArgumentException("Expired token");
-            return new Claims((String) payload.get("sub"), (String) payload.get("role"));
+            return new Claims((String) payload.get("sub"), (String) payload.get("role"), ((Number) payload.get("salonId")).longValue());
         } catch (Exception exception) { throw new IllegalArgumentException("Invalid or expired token", exception); }
     }
 
     private String encode(Object value) { try { return Base64.getUrlEncoder().withoutPadding().encodeToString(mapper.writeValueAsBytes(value)); } catch (Exception e) { throw new IllegalStateException(e); } }
     private byte[] sign(String value) { try { Mac mac=Mac.getInstance("HmacSHA256"); mac.init(new SecretKeySpec(secret,"HmacSHA256")); return mac.doFinal(value.getBytes(StandardCharsets.UTF_8)); } catch(Exception e){throw new IllegalStateException(e);} }
-    public record Claims(String username, String role) {}
+    public record Claims(String username, String role, Long salonId) {}
     private static final class MessageDigestHolder { static byte[] sha256(String value) { try { return MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)); } catch(Exception e){throw new IllegalStateException(e);} } }
 }

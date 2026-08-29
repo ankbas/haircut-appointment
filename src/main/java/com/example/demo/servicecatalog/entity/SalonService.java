@@ -1,5 +1,7 @@
 package com.example.demo.servicecatalog.entity;
 
+import com.example.demo.salon.entity.Salon;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -7,6 +9,9 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
@@ -16,12 +21,16 @@ import java.util.Objects;
 @Entity
 @Table(name = "services", uniqueConstraints =
         @UniqueConstraint(
-                name = "uk_service_audience_type", columnNames = {"audience", "service_type"}))
+                name = "uk_service_salon_audience_type", columnNames = {"salon_id", "audience", "service_type"}))
 public class SalonService {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "salon_id", nullable = false)
+    private Salon salon;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
@@ -41,7 +50,8 @@ public class SalonService {
     }
 
     public SalonService(
-            ServiceAudience audience, ServiceType type, BigDecimal price, Integer durationMinutes) {
+            Salon salon, ServiceAudience audience, ServiceType type, BigDecimal price, Integer durationMinutes) {
+        this.salon = Objects.requireNonNull(salon, "Salon is required");
         update(audience, type, price, durationMinutes);
     }
 
@@ -76,6 +86,7 @@ public class SalonService {
     }
 
     public Long getId() { return id; }
+    public Salon getSalon() { return salon; }
     public ServiceAudience getAudience() { return audience; }
     public ServiceType getType() { return type; }
     public BigDecimal getPrice() { return price; }

@@ -16,10 +16,10 @@ public class AuthController {
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         return repository.findByUsernameIgnoreCase(request.username())
                 .filter(UserAccount::isActive).filter(user -> encoder.matches(request.password(), user.getPasswordHash()))
-                .<ResponseEntity<?>>map(user -> ResponseEntity.ok(new LoginResponse(jwtService.issue(user), user.getUsername(), user.getRole())))
+                .<ResponseEntity<?>>map(user -> ResponseEntity.ok(new LoginResponse(jwtService.issue(user), user.getUsername(), user.getRole(), user.getSalon().getId())))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new AuthError("Invalid username or password")));
     }
     public record LoginRequest(@NotBlank String username, @NotBlank String password) {}
-    public record LoginResponse(String token, String username, UserRole role) {}
+    public record LoginResponse(String token, String username, UserRole role, Long salonId) {}
     public record AuthError(String detail) {}
 }

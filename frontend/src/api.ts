@@ -3,6 +3,7 @@ export type Professional = { id: number; name: string; bio: string; active: bool
 export type AvailabilitySlot = { startTime: string; endTime: string }
 export type Appointment = { id: number; confirmationNumber: string; customerName: string; customerPhone: string; customerEmail: string; professionalId: number; professionalName: string; serviceId: number; serviceType: string; price: number; durationMinutes: number; startTime: string; endTime: string; status: 'BOOKED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW' }
 type BookingRequest = { customerName: string; customerPhone: string; customerEmail: string; professionalId: number; serviceId: number; startTime: string }
+const SALON_ID = 1
 
 const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
   const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...options?.headers } })
@@ -19,13 +20,13 @@ const authRequest = <T>(path: string, options?: RequestInit) => request<T>(path,
 })
 
 export const api = {
-  services: () => request<Service[]>('/api/services'),
-  professionals: (serviceId: number) => request<Professional[]>(`/api/professionals?serviceId=${serviceId}`),
-  availability: (professionalId: number, serviceId: number, date: string) => request<AvailabilitySlot[]>(`/availability?professionalId=${professionalId}&serviceId=${serviceId}&date=${date}`),
-  book: (body: BookingRequest) => request<Appointment>('/api/appointments', { method: 'POST', body: JSON.stringify(body) }),
-  lookup: (confirmationNumber: string, email: string) => request<Appointment>(`/api/customer/appointments/lookup?confirmationNumber=${encodeURIComponent(confirmationNumber)}&email=${encodeURIComponent(email)}`),
-  cancel: (confirmationNumber: string, email: string) => request<Appointment>('/api/customer/appointments/cancel', { method: 'PATCH', body: JSON.stringify({ confirmationNumber, email }) }),
-  reschedule: (confirmationNumber: string, email: string, startTime: string) => request<Appointment>('/api/customer/appointments/reschedule', { method: 'PATCH', body: JSON.stringify({ confirmationNumber, email, startTime }) }),
+  services: () => request<Service[]>(`/api/services?salonId=${SALON_ID}`),
+  professionals: (serviceId: number) => request<Professional[]>(`/api/professionals?salonId=${SALON_ID}&serviceId=${serviceId}`),
+  availability: (professionalId: number, serviceId: number, date: string) => request<AvailabilitySlot[]>(`/availability?salonId=${SALON_ID}&professionalId=${professionalId}&serviceId=${serviceId}&date=${date}`),
+  book: (body: BookingRequest) => request<Appointment>('/api/appointments', { method: 'POST', body: JSON.stringify({ salonId: SALON_ID, ...body }) }),
+  lookup: (confirmationNumber: string, email: string) => request<Appointment>(`/api/customer/appointments/lookup?salonId=${SALON_ID}&confirmationNumber=${encodeURIComponent(confirmationNumber)}&email=${encodeURIComponent(email)}`),
+  cancel: (confirmationNumber: string, email: string) => request<Appointment>('/api/customer/appointments/cancel', { method: 'PATCH', body: JSON.stringify({ salonId: SALON_ID, confirmationNumber, email }) }),
+  reschedule: (confirmationNumber: string, email: string, startTime: string) => request<Appointment>('/api/customer/appointments/reschedule', { method: 'PATCH', body: JSON.stringify({ salonId: SALON_ID, confirmationNumber, email, startTime }) }),
   login: (username: string, password: string) => request<{ token: string; username: string; role: string }>('/api/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
   adminAppointments: (from: string, to: string) => authRequest<Appointment[]>(`/api/admin/appointments?from=${from}&to=${to}`),
   updateStatus: (id: number, status: Appointment['status']) => authRequest<Appointment>(`/api/admin/appointments/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),

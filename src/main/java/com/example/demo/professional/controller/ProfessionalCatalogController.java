@@ -24,8 +24,9 @@ public class ProfessionalCatalogController {
 
     @GetMapping
     public ResponseEntity<List<ProfessionalResponseDto>> findForService(
+            @RequestParam @Positive Long salonId,
             @RequestParam @Positive Long serviceId) {
-        return ResponseEntity.ok(repository.findActiveByServiceId(serviceId).stream()
+        return ResponseEntity.ok(repository.findActiveByServiceId(salonId, serviceId).stream()
                 .map(ProfessionalResponseDto::from).toList());
     }
 }

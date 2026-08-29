@@ -11,13 +11,17 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.example.demo.security.AuthenticatedUser;
+import com.example.demo.salon.entity.Salon;
+import com.example.demo.salon.repository.SalonRepository;
 
 @RestController @RequestMapping("/api/admin/services") @PreAuthorize("hasRole('ADMIN')") @Transactional
 public class AdminServiceController {
-    private final SalonServiceRepository repository;
-    public AdminServiceController(SalonServiceRepository repository){this.repository=repository;}
-    @PostMapping public ResponseEntity<ServiceResponseDto> create(@Valid @RequestBody ServiceRequest request){ SalonService saved=repository.save(request.toEntity()); return ResponseEntity.status(HttpStatus.CREATED).body(ServiceResponseDto.from(saved)); }
-    @PutMapping("/{id}") public ResponseEntity<ServiceResponseDto> update(@PathVariable @Positive Long id,@Valid @RequestBody ServiceRequest request){ SalonService item=repository.findById(id).orElseThrow(()->new SalonServiceNotFoundException(id)); item.update(request.audience(),request.type(),request.price(),request.durationMinutes()); return ResponseEntity.ok(ServiceResponseDto.from(item)); }
-    @DeleteMapping("/{id}") public ResponseEntity<Void> delete(@PathVariable @Positive Long id){ if(!repository.existsById(id))throw new SalonServiceNotFoundException(id); repository.deleteById(id); return ResponseEntity.noContent().build(); }
-    public record ServiceRequest(@NotNull ServiceAudience audience,@NotNull ServiceType type,@NotNull @DecimalMin("0.00") BigDecimal price,@NotNull @Positive Integer durationMinutes){ SalonService toEntity(){return new SalonService(audience,type,price,durationMinutes);} }
+    private final SalonServiceRepository repository; private final SalonRepository salons;
+    public AdminServiceController(SalonServiceRepository repository,SalonRepository salons){this.repository=repository;this.salons=salons;}
+    @PostMapping public ResponseEntity<ServiceResponseDto> create(@AuthenticationPrincipal AuthenticatedUser user,@Valid @RequestBody ServiceRequest request){ Salon salon=salons.getReferenceById(user.salonId()); SalonService saved=repository.save(request.toEntity(salon)); return ResponseEntity.status(HttpStatus.CREATED).body(ServiceResponseDto.from(saved)); }
+    @PutMapping("/{id}") public ResponseEntity<ServiceResponseDto> update(@AuthenticationPrincipal AuthenticatedUser user,@PathVariable @Positive Long id,@Valid @RequestBody ServiceRequest request){ SalonService item=repository.findByIdAndSalonId(id,user.salonId()).orElseThrow(()->new SalonServiceNotFoundException(id)); item.update(request.audience(),request.type(),request.price(),request.durationMinutes()); return ResponseEntity.ok(ServiceResponseDto.from(item)); }
+    @DeleteMapping("/{id}") public ResponseEntity<Void> delete(@AuthenticationPrincipal AuthenticatedUser user,@PathVariable @Positive Long id){ SalonService item=repository.findByIdAndSalonId(id,user.salonId()).orElseThrow(()->new SalonServiceNotFoundException(id)); repository.delete(item); return ResponseEntity.noContent().build(); }
+    public record ServiceRequest(@NotNull ServiceAudience audience,@NotNull ServiceType type,@NotNull @DecimalMin("0.00") BigDecimal price,@NotNull @Positive Integer durationMinutes){ SalonService toEntity(Salon salon){return new SalonService(salon,audience,type,price,durationMinutes);} }
 }

@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 
 public record AppointmentResponseDto(
         Long id,
+        Long salonId,
         String confirmationNumber,
         String customerName,
         String customerPhone,
@@ -25,7 +26,7 @@ public record AppointmentResponseDto(
 
     public static AppointmentResponseDto from(Appointment appointment) {
         return new AppointmentResponseDto(
-                appointment.getId(), appointment.getConfirmationNumber(), appointment.getCustomerName(), appointment.getCustomerPhone(),
+                appointment.getId(), appointment.getSalon().getId(), appointment.getConfirmationNumber(), appointment.getCustomerName(), appointment.getCustomerPhone(),
                 appointment.getCustomerEmail(), appointment.getProfessional().getId(),
                 appointment.getProfessional().getName(), appointment.getService().getId(),
                 appointment.getService().getType(), appointment.getService().getPrice(),

@@ -7,10 +7,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
+import jakarta.validation.constraints.Positive;
+import org.springframework.validation.annotation.Validated;
 
 import java.util.List;
 
 @RestController
+@Validated
 @RequestMapping("/api/services")
 public class ServiceCatalogController {
     private final SalonServiceRepository repository;
@@ -20,8 +24,8 @@ public class ServiceCatalogController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ServiceResponseDto>> findAll() {
-        return ResponseEntity.ok(repository.findAll(Sort.by("audience", "type")).stream()
+    public ResponseEntity<List<ServiceResponseDto>> findAll(@RequestParam @Positive Long salonId) {
+        return ResponseEntity.ok(repository.findBySalonId(salonId, Sort.by("audience", "type")).stream()
                 .map(ServiceResponseDto::from).toList());
     }
 }

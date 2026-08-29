@@ -7,6 +7,7 @@ import com.example.demo.appointment.service.AppointmentService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,16 +30,17 @@ public class CustomerAppointmentController {
 
     @GetMapping("/lookup")
     public ResponseEntity<AppointmentResponseDto> lookup(
+            @RequestParam @Positive Long salonId,
             @RequestParam @NotBlank String confirmationNumber,
             @RequestParam @NotBlank @Email String email) {
-        return ResponseEntity.ok(appointmentService.findForCustomer(confirmationNumber, email));
+        return ResponseEntity.ok(appointmentService.findForCustomer(salonId, confirmationNumber, email));
     }
 
     @PatchMapping("/cancel")
     public ResponseEntity<AppointmentResponseDto> cancel(
             @Valid @RequestBody CustomerAppointmentAccessDto request) {
         return ResponseEntity.ok(appointmentService.cancelForCustomer(
-                request.confirmationNumber(), request.email()));
+                request.salonId(), request.confirmationNumber(), request.email()));
     }
 
     @PatchMapping("/reschedule")
