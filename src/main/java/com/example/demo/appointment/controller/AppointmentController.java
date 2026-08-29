@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.example.demo.security.AuthenticatedUser;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import org.springframework.validation.annotation.Validated;
 
@@ -41,33 +44,44 @@ public class AppointmentController {
     }
 
     @GetMapping
-    public ResponseEntity<List<AppointmentResponseDto>> findAll() {
-        return ResponseEntity.ok(service.findAll());
+    public ResponseEntity<List<AppointmentResponseDto>> findAll(@AuthenticationPrincipal Object principal,@RequestParam @Positive Long salonId) {
+        return ResponseEntity.ok(service.findAll(tenant(principal,salonId)));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<AppointmentResponseDto> findById(
-            @PathVariable @Positive(message = "Appointment ID must be positive") Long id) {
-        return ResponseEntity.ok(service.findById(id));
+            @PathVariable @Positive(message = "Appointment ID must be positive") Long id,
+            @AuthenticationPrincipal Object principal,
+            @RequestParam @Positive Long salonId) {
+        return ResponseEntity.ok(service.findById(id, tenant(principal,salonId)));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<AppointmentResponseDto> update(
             @PathVariable @Positive(message = "Appointment ID must be positive") Long id,
+            @AuthenticationPrincipal Object principal,
             @Valid @RequestBody AppointmentRequestDto request) {
-        return ResponseEntity.ok(service.update(id, request));
+        return ResponseEntity.ok(service.update(id, request, tenant(principal,request.salonId())));
     }
 
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<AppointmentResponseDto> cancel(
-            @PathVariable @Positive(message = "Appointment ID must be positive") Long id) {
-        return ResponseEntity.ok(service.cancel(id));
+            @PathVariable @Positive(message = "Appointment ID must be positive") Long id,
+            @AuthenticationPrincipal Object principal,
+            @RequestParam @Positive Long salonId) {
+        return ResponseEntity.ok(service.cancel(id, tenant(principal,salonId)));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
-            @PathVariable @Positive(message = "Appointment ID must be positive") Long id) {
-        service.delete(id);
+            @PathVariable @Positive(message = "Appointment ID must be positive") Long id,
+            @AuthenticationPrincipal Object principal,
+            @RequestParam @Positive Long salonId) {
+        service.delete(id, tenant(principal,salonId));
         return ResponseEntity.noContent().build();
+    }
+
+    private Long tenant(Object principal, Long requestedSalonId) {
+        return principal instanceof AuthenticatedUser user ? user.salonId() : requestedSalonId;
     }
 }

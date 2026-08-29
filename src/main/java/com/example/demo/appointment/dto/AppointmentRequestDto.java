@@ -11,6 +11,9 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 public record AppointmentRequestDto(
+        @NotNull(message = "Salon ID is required")
+        @Positive(message = "Salon ID must be positive")
+        Long salonId,
         @NotBlank(message = "Customer name is required")
         @Size(max = 100, message = "Customer name must not exceed 100 characters")
         String customerName,

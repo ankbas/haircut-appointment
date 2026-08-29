@@ -44,10 +44,10 @@ public class AvailabilityService {
     }
 
     public List<AvailabilitySlotResponse> findAvailability(
-            Long professionalId, Long serviceId, LocalDate date) {
-        Professional professional = professionalRepository.findWithDetailsById(professionalId)
+            Long salonId, Long professionalId, Long serviceId, LocalDate date) {
+        Professional professional = professionalRepository.findWithDetailsById(professionalId, salonId)
                 .orElseThrow(() -> new ProfessionalNotFoundException(professionalId));
-        SalonService service = salonServiceRepository.findById(serviceId)
+        SalonService service = salonServiceRepository.findByIdAndSalonId(serviceId, salonId)
                 .orElseThrow(() -> new SalonServiceNotFoundException(serviceId));
 
         if (!professional.isActive()) {
@@ -65,7 +65,7 @@ public class AvailabilityService {
 
         LocalDateTime dayStart = date.atStartOfDay();
         List<Appointment> appointments = appointmentRepository.findActiveForDay(
-                professionalId, dayStart, dayStart.plusDays(1));
+                salonId, professionalId, dayStart, dayStart.plusDays(1));
         List<ProfessionalTimeOff> timeOff = timeOffRepository
                 .findByProfessionalIdAndStartsAtLessThanAndEndsAtGreaterThanOrderByStartsAt(
                         professionalId, dayStart.plusDays(1), dayStart);

@@ -1,5 +1,7 @@
 package com.example.demo.professional.entity;
 
+import com.example.demo.salon.entity.Salon;
+
 import com.example.demo.servicecatalog.entity.SalonService;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Table;
@@ -28,6 +31,10 @@ public class Professional {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = jakarta.persistence.FetchType.LAZY, optional = false)
+    @JoinColumn(name = "salon_id", nullable = false)
+    private Salon salon;
 
     @Column(nullable = false, length = 100)
     private String name;
@@ -51,7 +58,8 @@ public class Professional {
     protected Professional() {
     }
 
-    public Professional(String name, String bio, boolean active) {
+    public Professional(Salon salon, String name, String bio, boolean active) {
+        this.salon = Objects.requireNonNull(salon, "Salon is required");
         update(name, bio, active);
         for (DayOfWeek day : DayOfWeek.values()) {
             setWorkingHours(day, LocalTime.of(9, 0), LocalTime.of(18, 0));
@@ -65,7 +73,13 @@ public class Professional {
     }
 
     public void addService(SalonService service) {
-        services.add(Objects.requireNonNull(service, "Service is required"));
+        Objects.requireNonNull(service, "Service is required");
+        boolean sameSalon = salon == service.getSalon()
+                || (salon.getId() != null && Objects.equals(salon.getId(), service.getSalon().getId()));
+        if (!sameSalon) {
+            throw new IllegalArgumentException("Professional and service must belong to the same salon");
+        }
+        services.add(service);
     }
 
     public void removeService(SalonService service) {
@@ -100,6 +114,7 @@ public class Professional {
     }
 
     public Long getId() { return id; }
+    public Salon getSalon() { return salon; }
     public String getName() { return name; }
     public String getBio() { return bio; }
     public boolean isActive() { return active; }

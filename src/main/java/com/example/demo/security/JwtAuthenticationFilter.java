@@ -22,7 +22,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             try {
                 JwtService.Claims claims = jwtService.verify(header.substring(7));
-                var authentication = new UsernamePasswordAuthenticationToken(claims.username(), null, List.of(new SimpleGrantedAuthority("ROLE_" + claims.role())));
+                var authentication = new UsernamePasswordAuthenticationToken(new AuthenticatedUser(claims.username(), claims.salonId()), null, List.of(new SimpleGrantedAuthority("ROLE_" + claims.role())));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } catch (IllegalArgumentException ignored) { SecurityContextHolder.clearContext(); }
         }

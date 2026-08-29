@@ -27,10 +27,11 @@ public class AvailabilityController {
 
     @GetMapping
     public ResponseEntity<List<AvailabilitySlotResponse>> findAvailability(
+            @RequestParam @Positive(message = "Salon ID must be positive") Long salonId,
             @RequestParam @Positive(message = "Professional ID must be positive") Long professionalId,
             @RequestParam @Positive(message = "Service ID must be positive") Long serviceId,
             @RequestParam @FutureOrPresent(message = "Date must be today or in the future") LocalDate date) {
         return ResponseEntity.ok(
-                availabilityService.findAvailability(professionalId, serviceId, date));
+                availabilityService.findAvailability(salonId, professionalId, serviceId, date));
     }
 }

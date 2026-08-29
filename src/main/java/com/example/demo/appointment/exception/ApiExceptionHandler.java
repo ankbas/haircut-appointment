@@ -15,6 +15,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import com.example.demo.salon.exception.SalonNotFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -27,6 +28,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ProfessionalNotFoundException.class)
     ResponseEntity<ProblemDetail> handleProfessionalNotFound(ProfessionalNotFoundException exception) {
         return response(HttpStatus.NOT_FOUND, "Professional not found", exception.getMessage());
+    }
+
+    @ExceptionHandler(SalonNotFoundException.class)
+    ResponseEntity<ProblemDetail> handleSalonNotFound(SalonNotFoundException exception) {
+        return response(HttpStatus.NOT_FOUND, "Salon not found", exception.getMessage());
     }
 
     @ExceptionHandler(SalonServiceNotFoundException.class)

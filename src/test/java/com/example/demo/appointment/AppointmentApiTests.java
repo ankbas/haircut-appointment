@@ -7,6 +7,8 @@ import com.example.demo.servicecatalog.entity.SalonService;
 import com.example.demo.servicecatalog.entity.ServiceAudience;
 import com.example.demo.servicecatalog.entity.ServiceType;
 import com.example.demo.servicecatalog.repository.SalonServiceRepository;
+import com.example.demo.salon.entity.Salon;
+import com.example.demo.salon.repository.SalonRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,21 +45,24 @@ class AppointmentApiTests {
     @Autowired private AppointmentRepository appointmentRepository;
     @Autowired private ProfessionalRepository professionalRepository;
     @Autowired private SalonServiceRepository salonServiceRepository;
+    @Autowired private SalonRepository salonRepository;
 
     private SalonService haircut;
     private Professional professional;
     private LocalDate bookingDate;
+    private Salon salon;
 
     @BeforeEach
     void setUpCatalog() {
         appointmentRepository.deleteAll();
         professionalRepository.deleteAll();
         salonServiceRepository.deleteAll();
+        salon = salonRepository.findById(1L).orElseThrow();
 
         haircut = salonServiceRepository.save(
-                new SalonService(ServiceAudience.MEN, ServiceType.HAIRCUT,
+                new SalonService(salon, ServiceAudience.MEN, ServiceType.HAIRCUT,
                         new BigDecimal("30.00"), 30));
-        professional = new Professional("Alex Morgan", "Hair specialist", true);
+        professional = new Professional(salon, "Alex Morgan", "Hair specialist", true);
         professional.addService(haircut);
         professional = professionalRepository.save(professional);
         bookingDate = LocalDate.now().plusDays(10);
@@ -78,7 +83,7 @@ class AppointmentApiTests {
                 .andExpect(jsonPath("$.status").value("BOOKED"))
                 .andReturn().getResponse().getHeader("Location");
 
-        mockMvc.perform(get(location).with(user("admin").roles("ADMIN"))).andExpect(status().isOk());
+        mockMvc.perform(get(location).param("salonId","1").with(user("admin").roles("ADMIN"))).andExpect(status().isOk());
     }
 
     @Test
@@ -119,6 +124,7 @@ class AppointmentApiTests {
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/availability")
+                        .param("salonId", "1")
                         .param("professionalId", professional.getId().toString())
                         .param("serviceId", haircut.getId().toString())
                         .param("date", bookingDate.toString()))
@@ -135,11 +141,11 @@ class AppointmentApiTests {
         LocalDateTime start = bookingDate.atTime(10, 0);
         String location = createAppointment("John Smith", start);
 
-        mockMvc.perform(patch(location + "/cancel").with(user("admin").roles("ADMIN")))
+        mockMvc.perform(patch(location + "/cancel").param("salonId","1").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
 
-        mockMvc.perform(get(location).with(user("admin").roles("ADMIN")))
+        mockMvc.perform(get(location).param("salonId","1").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
 
@@ -186,7 +192,7 @@ class AppointmentApiTests {
                         .content(request("John Smith", occupiedStart)))
                 .andExpect(status().isConflict());
 
-        mockMvc.perform(get(location).with(user("admin").roles("ADMIN")))
+        mockMvc.perform(get(location).param("salonId","1").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.startTime").value(originalStart + ":00"));
     }
@@ -194,8 +200,8 @@ class AppointmentApiTests {
     @Test
     void deletesAppointment() throws Exception {
         String location = createAppointment("John Smith", bookingDate.atTime(10, 0));
-        mockMvc.perform(delete(location).with(user("admin").roles("ADMIN"))).andExpect(status().isNoContent());
-        mockMvc.perform(get(location).with(user("admin").roles("ADMIN"))).andExpect(status().isNotFound());
+        mockMvc.perform(delete(location).param("salonId","1").with(user("admin").roles("ADMIN"))).andExpect(status().isNoContent());
+        mockMvc.perform(get(location).param("salonId","1").with(user("admin").roles("ADMIN"))).andExpect(status().isNotFound());
     }
 
     @Test
@@ -209,6 +215,7 @@ class AppointmentApiTests {
                 .andExpect(jsonPath("$.errors.startTime").exists());
 
         mockMvc.perform(get("/availability")
+                        .param("salonId", "1")
                         .param("professionalId", "0")
                         .param("serviceId", haircut.getId().toString())
                         .param("date", bookingDate.toString()))
@@ -222,6 +229,7 @@ class AppointmentApiTests {
         String confirmation = appointmentRepository.findAll().get(0).getConfirmationNumber();
 
         mockMvc.perform(get("/api/customer/appointments/lookup").with(anonymous())
+                        .param("salonId", "1")
                         .param("confirmationNumber", confirmation)
                         .param("email", "customer@example.com"))
                 .andExpect(status().isOk())
@@ -230,7 +238,7 @@ class AppointmentApiTests {
         mockMvc.perform(patch("/api/customer/appointments/cancel").with(anonymous())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"confirmationNumber":"%s","email":"customer@example.com"}
+                                {"salonId":1,"confirmationNumber":"%s","email":"customer@example.com"}
                                 """.formatted(confirmation)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
@@ -239,6 +247,7 @@ class AppointmentApiTests {
     private String request(String customerName, LocalDateTime startTime) {
         return """
                 {
+                  "salonId": 1,
                   "customerName": "%s",
                   "customerPhone": "312-555-1234",
                   "customerEmail": "customer@example.com",

@@ -11,20 +11,22 @@ import java.util.Optional;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
 
-    Optional<Appointment> findByConfirmationNumberIgnoreCaseAndCustomerEmailIgnoreCase(
-            String confirmationNumber, String customerEmail);
+    Optional<Appointment> findBySalonIdAndConfirmationNumberIgnoreCaseAndCustomerEmailIgnoreCase(
+            Long salonId, String confirmationNumber, String customerEmail);
 
-    List<Appointment> findByStartTimeBetweenOrderByStartTime(LocalDateTime start, LocalDateTime end);
+    List<Appointment> findBySalonIdAndStartTimeBetweenOrderByStartTime(Long salonId, LocalDateTime start, LocalDateTime end);
+    Optional<Appointment> findByIdAndSalonId(Long id, Long salonId);
 
     @Query("""
             select (count(a) > 0) from Appointment a
-            where a.professional.id = :professionalId
+            where a.salon.id = :salonId and a.professional.id = :professionalId
               and a.status <> com.example.demo.appointment.entity.AppointmentStatus.CANCELLED
               and a.startTime < :endTime
               and a.endTime > :startTime
               and (:excludedId is null or a.id <> :excludedId)
             """)
     boolean hasOverlap(
+            @Param("salonId") Long salonId,
             @Param("professionalId") Long professionalId,
             @Param("startTime") LocalDateTime startTime,
             @Param("endTime") LocalDateTime endTime,
@@ -32,13 +34,14 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     @Query("""
             select a from Appointment a
-            where a.professional.id = :professionalId
+            where a.salon.id = :salonId and a.professional.id = :professionalId
               and a.status <> com.example.demo.appointment.entity.AppointmentStatus.CANCELLED
               and a.startTime < :dayEnd
               and a.endTime > :dayStart
             order by a.startTime
             """)
     List<Appointment> findActiveForDay(
+            @Param("salonId") Long salonId,
             @Param("professionalId") Long professionalId,
             @Param("dayStart") LocalDateTime dayStart,
             @Param("dayEnd") LocalDateTime dayEnd);

@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import com.example.demo.salon.repository.SalonRepository;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -23,10 +24,11 @@ class SecurityApiTests {
     @Autowired MockMvc mockMvc;
     @Autowired UserAccountRepository repository;
     @Autowired PasswordEncoder passwordEncoder;
+    @Autowired SalonRepository salons;
 
     @BeforeEach void setUp() {
         repository.deleteAll();
-        repository.save(new UserAccount(
+        repository.save(new UserAccount(salons.findById(1L).orElseThrow(),
                 "test-admin", passwordEncoder.encode("Strong-Test-Password"),
                 UserRole.ADMIN, null));
     }
