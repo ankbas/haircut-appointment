@@ -9,6 +9,8 @@ import com.example.demo.availability.dto.AvailabilitySlotResponse;
 import com.example.demo.professional.entity.Professional;
 import com.example.demo.professional.entity.ProfessionalWorkingHours;
 import com.example.demo.professional.repository.ProfessionalRepository;
+import com.example.demo.professional.repository.ProfessionalTimeOffRepository;
+import com.example.demo.professional.entity.ProfessionalTimeOff;
 import com.example.demo.servicecatalog.entity.SalonService;
 import com.example.demo.servicecatalog.repository.SalonServiceRepository;
 import org.springframework.stereotype.Service;
@@ -28,14 +30,17 @@ public class AvailabilityService {
     private final ProfessionalRepository professionalRepository;
     private final SalonServiceRepository salonServiceRepository;
     private final AppointmentRepository appointmentRepository;
+    private final ProfessionalTimeOffRepository timeOffRepository;
 
     public AvailabilityService(
             ProfessionalRepository professionalRepository,
             SalonServiceRepository salonServiceRepository,
-            AppointmentRepository appointmentRepository) {
+            AppointmentRepository appointmentRepository,
+            ProfessionalTimeOffRepository timeOffRepository) {
         this.professionalRepository = professionalRepository;
         this.salonServiceRepository = salonServiceRepository;
         this.appointmentRepository = appointmentRepository;
+        this.timeOffRepository = timeOffRepository;
     }
 
     public List<AvailabilitySlotResponse> findAvailability(
@@ -61,6 +66,9 @@ public class AvailabilityService {
         LocalDateTime dayStart = date.atStartOfDay();
         List<Appointment> appointments = appointmentRepository.findActiveForDay(
                 professionalId, dayStart, dayStart.plusDays(1));
+        List<ProfessionalTimeOff> timeOff = timeOffRepository
+                .findByProfessionalIdAndStartsAtLessThanAndEndsAtGreaterThanOrderByStartsAt(
+                        professionalId, dayStart.plusDays(1), dayStart);
         LocalDateTime cursor = date.atTime(hours.getStartTime());
         LocalDateTime closingTime = date.atTime(hours.getEndTime());
         LocalDateTime now = LocalDateTime.now();
@@ -72,7 +80,9 @@ public class AvailabilityService {
             boolean overlaps = appointments.stream().anyMatch(appointment ->
                     appointment.getStartTime().isBefore(slotEnd)
                             && appointment.getEndTime().isAfter(slotStart));
-            if (cursor.isAfter(now) && !overlaps) {
+            boolean overlapsTimeOff = timeOff.stream().anyMatch(block ->
+                    block.getStartsAt().isBefore(slotEnd) && block.getEndsAt().isAfter(slotStart));
+            if (cursor.isAfter(now) && !overlaps && !overlapsTimeOff) {
                 slots.add(new AvailabilitySlotResponse(cursor, slotEnd));
             }
             cursor = cursor.plusMinutes(SLOT_INTERVAL_MINUTES);

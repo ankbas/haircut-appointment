@@ -7,8 +7,14 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
+
+    Optional<Appointment> findByConfirmationNumberIgnoreCaseAndCustomerEmailIgnoreCase(
+            String confirmationNumber, String customerEmail);
+
+    List<Appointment> findByStartTimeBetweenOrderByStartTime(LocalDateTime start, LocalDateTime end);
 
     @Query("""
             select (count(a) > 0) from Appointment a

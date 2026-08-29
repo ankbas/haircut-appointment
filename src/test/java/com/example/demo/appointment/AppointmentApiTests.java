@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.security.test.context.support.WithMockUser;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -29,10 +30,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.anonymous;
 
 @SpringBootTest(properties =
         "spring.datasource.url=${TEST_DB_URL:jdbc:postgresql://localhost:5432/haircut_appointments_test}")
 @AutoConfigureMockMvc
+@WithMockUser(username = "admin", roles = "ADMIN")
 class AppointmentApiTests {
 
     @Autowired private MockMvc mockMvc;
@@ -74,7 +78,7 @@ class AppointmentApiTests {
                 .andExpect(jsonPath("$.status").value("BOOKED"))
                 .andReturn().getResponse().getHeader("Location");
 
-        mockMvc.perform(get(location)).andExpect(status().isOk());
+        mockMvc.perform(get(location).with(user("admin").roles("ADMIN"))).andExpect(status().isOk());
     }
 
     @Test
@@ -131,11 +135,11 @@ class AppointmentApiTests {
         LocalDateTime start = bookingDate.atTime(10, 0);
         String location = createAppointment("John Smith", start);
 
-        mockMvc.perform(patch(location + "/cancel"))
+        mockMvc.perform(patch(location + "/cancel").with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
 
-        mockMvc.perform(get(location))
+        mockMvc.perform(get(location).with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
 
@@ -151,7 +155,7 @@ class AppointmentApiTests {
         LocalDateTime rescheduledStart = start.plusHours(1);
         String location = createAppointment("John Smith", start);
 
-        mockMvc.perform(put(location)
+        mockMvc.perform(put(location).with(user("admin").roles("ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request("Jane Smith", rescheduledStart)))
                 .andExpect(status().isOk())
@@ -177,12 +181,12 @@ class AppointmentApiTests {
         String location = createAppointment("John Smith", originalStart);
         createAppointment("Jane Smith", occupiedStart);
 
-        mockMvc.perform(put(location)
+        mockMvc.perform(put(location).with(user("admin").roles("ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request("John Smith", occupiedStart)))
                 .andExpect(status().isConflict());
 
-        mockMvc.perform(get(location))
+        mockMvc.perform(get(location).with(user("admin").roles("ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.startTime").value(originalStart + ":00"));
     }
@@ -190,8 +194,8 @@ class AppointmentApiTests {
     @Test
     void deletesAppointment() throws Exception {
         String location = createAppointment("John Smith", bookingDate.atTime(10, 0));
-        mockMvc.perform(delete(location)).andExpect(status().isNoContent());
-        mockMvc.perform(get(location)).andExpect(status().isNotFound());
+        mockMvc.perform(delete(location).with(user("admin").roles("ADMIN"))).andExpect(status().isNoContent());
+        mockMvc.perform(get(location).with(user("admin").roles("ADMIN"))).andExpect(status().isNotFound());
     }
 
     @Test
@@ -210,6 +214,26 @@ class AppointmentApiTests {
                         .param("date", bookingDate.toString()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.professionalId").exists());
+    }
+
+    @Test
+    void customerCanLookUpAndCancelWithConfirmationNumberAndMatchingEmail() throws Exception {
+        createAppointment("John Smith", bookingDate.atTime(10, 0));
+        String confirmation = appointmentRepository.findAll().get(0).getConfirmationNumber();
+
+        mockMvc.perform(get("/api/customer/appointments/lookup").with(anonymous())
+                        .param("confirmationNumber", confirmation)
+                        .param("email", "customer@example.com"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.confirmationNumber").value(confirmation));
+
+        mockMvc.perform(patch("/api/customer/appointments/cancel").with(anonymous())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"confirmationNumber":"%s","email":"customer@example.com"}
+                                """.formatted(confirmation)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
     }
 
     private String request(String customerName, LocalDateTime startTime) {
