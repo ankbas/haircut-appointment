@@ -16,6 +16,7 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
 @Table(name = "appointments")
@@ -24,6 +25,9 @@ public class Appointment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "confirmation_number", nullable = false, unique = true, length = 20)
+    private String confirmationNumber;
 
     @Column(name = "customer_name", nullable = false, length = 100)
     private String customerName;
@@ -59,6 +63,8 @@ public class Appointment {
             String customerName, String customerPhone, String customerEmail,
             Professional professional, SalonService service, LocalDateTime startTime) {
         this.status = AppointmentStatus.BOOKED;
+        this.confirmationNumber = "ATL-" + UUID.randomUUID().toString()
+                .replace("-", "").substring(0, 8).toUpperCase();
         update(customerName, customerPhone, customerEmail, professional, service, startTime);
     }
 
@@ -86,6 +92,7 @@ public class Appointment {
     }
 
     public Long getId() { return id; }
+    public String getConfirmationNumber() { return confirmationNumber; }
     public String getCustomerName() { return customerName; }
     public String getCustomerPhone() { return customerPhone; }
     public String getCustomerEmail() { return customerEmail; }

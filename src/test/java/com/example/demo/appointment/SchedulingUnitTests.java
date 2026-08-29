@@ -9,6 +9,7 @@ import com.example.demo.appointment.service.AppointmentService;
 import com.example.demo.availability.service.AvailabilityService;
 import com.example.demo.professional.entity.Professional;
 import com.example.demo.professional.repository.ProfessionalRepository;
+import com.example.demo.professional.repository.ProfessionalTimeOffRepository;
 import com.example.demo.servicecatalog.entity.SalonService;
 import com.example.demo.servicecatalog.entity.ServiceAudience;
 import com.example.demo.servicecatalog.entity.ServiceType;
@@ -40,6 +41,7 @@ class SchedulingUnitTests {
     @Mock private AppointmentRepository appointmentRepository;
     @Mock private ProfessionalRepository professionalRepository;
     @Mock private SalonServiceRepository salonServiceRepository;
+    @Mock private ProfessionalTimeOffRepository timeOffRepository;
 
     private AppointmentService appointmentService;
     private AvailabilityService availabilityService;
@@ -50,9 +52,9 @@ class SchedulingUnitTests {
     @BeforeEach
     void setUp() {
         appointmentService = new AppointmentService(
-                appointmentRepository, professionalRepository, salonServiceRepository);
+                appointmentRepository, professionalRepository, salonServiceRepository, timeOffRepository);
         availabilityService = new AvailabilityService(
-                professionalRepository, salonServiceRepository, appointmentRepository);
+                professionalRepository, salonServiceRepository, appointmentRepository, timeOffRepository);
         haircut = new SalonService(
                 ServiceAudience.MEN, ServiceType.HAIRCUT, new BigDecimal("30.00"), 30);
         professional = new Professional("Alex Morgan", "Hair specialist", true);

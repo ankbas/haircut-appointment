@@ -1,11 +1,12 @@
-# Haircut Appointment API
+# Atelier Hair & Beauty
 
-A Spring Boot REST API for managing salon professionals, services, appointments, and real-time availability. PostgreSQL stores the data, Flyway versions the schema, and bookings are checked against working hours and existing appointments.
+A full-stack salon booking platform with a Spring Boot/PostgreSQL API and a luxury React/TypeScript frontend. It supports real availability, customer booking management, JWT-protected operations, and admin catalog/schedule management.
 
 ## Requirements
 
 - Java 17+
 - PostgreSQL 16+
+- Node.js 22+
 
 ## Database setup
 
@@ -37,6 +38,8 @@ Flyway creates and versions the schema automatically. Hibernate validates the sc
 
 ## Run locally
 
+Start the API:
+
 ```powershell
 # Windows
 .\mvnw.cmd spring-boot:run
@@ -47,19 +50,50 @@ Flyway creates and versions the schema automatically. Hibernate validates the sc
 ./mvnw spring-boot:run
 ```
 
-Base URL: `http://localhost:8080`
+Base URL: `http://localhost:8090`
+
+In a second PowerShell window, start the frontend:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend URL: `http://localhost:5173`
+
+Vite proxies API requests to port `8090`. Override the backend with `SERVER_PORT` and the frontend target with `VITE_API_TARGET` when needed.
+
+### First admin account
+
+Set these before the first API startup. The password is BCrypt-hashed in PostgreSQL and is never committed:
+
+```powershell
+$env:ADMIN_USERNAME="your-admin-name"
+$env:ADMIN_PASSWORD="use-a-strong-unique-password"
+$env:JWT_SECRET="use-a-long-random-signing-secret"
+.\mvnw.cmd spring-boot:run
+```
 
 ## API
 
 | Method | Endpoint | Success | Description |
 | --- | --- | --- | --- |
 | `POST` | `/api/appointments` | `201 Created` | Create an appointment |
+| `GET` | `/api/services` | `200 OK` | List services and pricing |
+| `GET` | `/api/professionals?serviceId=1` | `200 OK` | List professionals for a service |
 | `GET` | `/api/appointments` | `200 OK` | List appointments by date and time |
 | `GET` | `/api/appointments/{id}` | `200 OK` | Get an appointment |
 | `PUT` | `/api/appointments/{id}` | `200 OK` | Replace an appointment |
 | `PATCH` | `/api/appointments/{id}/cancel` | `200 OK` | Cancel an appointment without deleting it |
 | `DELETE` | `/api/appointments/{id}` | `204 No Content` | Delete an appointment |
 | `GET` | `/availability?professionalId=1&serviceId=1&date=2099-08-20` | `200 OK` | List bookable time slots |
+| `GET` | `/api/customer/appointments/lookup` | `200 OK` | Find a booking by confirmation number and email |
+| `PATCH` | `/api/customer/appointments/cancel` | `200 OK` | Customer cancellation |
+| `PATCH` | `/api/customer/appointments/reschedule` | `200 OK` | Customer rescheduling |
+| `POST` | `/api/auth/login` | `200 OK` | Issue an admin/professional JWT |
+
+Routes under `/api/admin/**` require `Authorization: Bearer <token>` and provide appointment status, service, professional, working-hours, and time-off management.
 
 ### Request body
 
@@ -98,6 +132,8 @@ Features are organized into `controller`, `service`, `repository`, `entity`, `dt
 
 ```powershell
 .\mvnw.cmd test
+cd frontend
+npm run build
 ```
 
 The application and automated tests both use PostgreSQL. Tests use the separate `haircut_appointments_test` database and never modify development data.

@@ -2,6 +2,7 @@ package com.example.demo.appointment.service;
 
 import com.example.demo.appointment.dto.AppointmentRequestDto;
 import com.example.demo.appointment.dto.AppointmentResponseDto;
+import com.example.demo.appointment.dto.CustomerRescheduleDto;
 import com.example.demo.appointment.entity.Appointment;
 import com.example.demo.appointment.entity.AppointmentStatus;
 import com.example.demo.appointment.exception.AppointmentConflictException;
@@ -13,6 +14,7 @@ import com.example.demo.appointment.repository.AppointmentRepository;
 import com.example.demo.professional.entity.Professional;
 import com.example.demo.professional.entity.ProfessionalWorkingHours;
 import com.example.demo.professional.repository.ProfessionalRepository;
+import com.example.demo.professional.repository.ProfessionalTimeOffRepository;
 import com.example.demo.servicecatalog.entity.SalonService;
 import com.example.demo.servicecatalog.repository.SalonServiceRepository;
 import org.springframework.data.domain.Sort;
@@ -29,14 +31,17 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final ProfessionalRepository professionalRepository;
     private final SalonServiceRepository salonServiceRepository;
+    private final ProfessionalTimeOffRepository timeOffRepository;
 
     public AppointmentService(
             AppointmentRepository appointmentRepository,
             ProfessionalRepository professionalRepository,
-            SalonServiceRepository salonServiceRepository) {
+            SalonServiceRepository salonServiceRepository,
+            ProfessionalTimeOffRepository timeOffRepository) {
         this.appointmentRepository = appointmentRepository;
         this.professionalRepository = professionalRepository;
         this.salonServiceRepository = salonServiceRepository;
+        this.timeOffRepository = timeOffRepository;
     }
 
     public AppointmentResponseDto create(AppointmentRequestDto request) {
@@ -81,6 +86,37 @@ public class AppointmentService {
         return AppointmentResponseDto.from(appointment);
     }
 
+    @Transactional(readOnly = true)
+    public AppointmentResponseDto findForCustomer(String confirmationNumber, String email) {
+        return AppointmentResponseDto.from(findForCustomerEntity(confirmationNumber, email));
+    }
+
+    public AppointmentResponseDto cancelForCustomer(String confirmationNumber, String email) {
+        Appointment appointment = findForCustomerEntity(confirmationNumber, email);
+        if (appointment.getStatus() == AppointmentStatus.COMPLETED) {
+            throw new InvalidBookingException("Completed appointments cannot be cancelled");
+        }
+        appointment.changeStatus(AppointmentStatus.CANCELLED);
+        return AppointmentResponseDto.from(appointment);
+    }
+
+    public AppointmentResponseDto rescheduleForCustomer(CustomerRescheduleDto request) {
+        Appointment appointment = findForCustomerEntity(request.confirmationNumber(), request.email());
+        if (appointment.getStatus() != AppointmentStatus.BOOKED) {
+            throw new InvalidBookingException("Only booked appointments can be rescheduled");
+        }
+        AppointmentRequestDto bookingRequest = new AppointmentRequestDto(
+                appointment.getCustomerName(), appointment.getCustomerPhone(),
+                appointment.getCustomerEmail(), appointment.getProfessional().getId(),
+                appointment.getService().getId(), request.startTime());
+        Booking booking = resolveBooking(bookingRequest);
+        ensureBookable(booking, appointment.getId());
+        appointment.update(
+                appointment.getCustomerName(), appointment.getCustomerPhone(), appointment.getCustomerEmail(),
+                booking.professional(), booking.service(), request.startTime());
+        return AppointmentResponseDto.from(appointment);
+    }
+
     public void delete(Long id) {
         appointmentRepository.delete(findEntity(id));
     }
@@ -114,11 +150,37 @@ public class AppointmentService {
                 booking.endTime(), excludedAppointmentId)) {
             throw new AppointmentConflictException();
         }
+        if (timeOffRepository.existsByProfessionalIdAndStartsAtLessThanAndEndsAtGreaterThan(
+                booking.professional().getId(), booking.endTime(), booking.startTime())) {
+            throw new InvalidBookingException("Professional is unavailable during the selected time");
+        }
     }
 
     private Appointment findEntity(Long id) {
         return appointmentRepository.findById(id)
                 .orElseThrow(() -> new AppointmentNotFoundException(id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<AppointmentResponseDto> findBetween(LocalDateTime start, LocalDateTime end) {
+        return appointmentRepository.findByStartTimeBetweenOrderByStartTime(start, end).stream()
+                .map(AppointmentResponseDto::from).toList();
+    }
+
+    public AppointmentResponseDto changeStatus(Long id, AppointmentStatus status) {
+        Appointment appointment = findEntity(id);
+        if (appointment.getStatus() == AppointmentStatus.CANCELLED && status != AppointmentStatus.CANCELLED) {
+            throw new InvalidBookingException("Cancelled appointments cannot be reactivated");
+        }
+        appointment.changeStatus(status);
+        return AppointmentResponseDto.from(appointment);
+    }
+
+    private Appointment findForCustomerEntity(String confirmationNumber, String email) {
+        return appointmentRepository
+                .findByConfirmationNumberIgnoreCaseAndCustomerEmailIgnoreCase(
+                        confirmationNumber.trim(), email.trim())
+                .orElseThrow(AppointmentNotFoundException::new);
     }
 
     private record Booking(

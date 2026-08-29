@@ -10,6 +10,7 @@ data/appointments.trace.db
 
 # Local secrets and credentials
 application-secrets.properties
+application-admin-secrets.properties
 .env
 .env.*
 !.env.example

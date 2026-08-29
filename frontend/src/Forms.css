@@ -1,0 +1,2 @@
+.form-stack{display:grid;gap:22px}.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:500px){.form-row{grid-template-columns:1fr}}
